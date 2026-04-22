@@ -3,18 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 
+// Endereço do servidor backend
 const API_URL = 'http://localhost:3001/api';
 
 const Login = () => {
+
+  // ─────────────────────────────────────────────
+  // ESTADOS — Guardam os dados digitados pelo
+  // usuário e controlam o comportamento da tela
+  // ─────────────────────────────────────────────
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState({ email: '', password: '', server: '' });
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberEmail, setRememberEmail] = useState(false);
-  const navigate = useNavigate();
 
-  // Carrega e-mail salvo ao abrir a página
+  // Armazena as mensagens de erro de cada campo
+  const [errors, setErrors] = useState({ email: '', password: '', server: '' });
+
+  const [loading, setLoading] = useState(false);           // Controla o botão "Entrando..."
+  const [showPassword, setShowPassword] = useState(false); // Mostrar/ocultar senha
+  const [rememberEmail, setRememberEmail] = useState(false); // Lembrar e-mail
+
+  const navigate = useNavigate(); // Usado para redirecionar entre páginas
+
+  // ─────────────────────────────────────────────
+  // LEMBRAR E-MAIL
+  // Ao abrir a página, verifica se existe um
+  // e-mail salvo no navegador e preenche o campo
+  // ─────────────────────────────────────────────
   useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
     if (savedEmail) {
@@ -23,7 +37,10 @@ const Login = () => {
     }
   }, []);
 
-  // Limpa erro ao digitar
+  // ─────────────────────────────────────────────
+  // LIMPA O ERRO do campo assim que o usuário
+  // começa a digitar novamente nele
+  // ─────────────────────────────────────────────
   const handleEmailChange = (e) => {
     setEmail(e.target.value);
     if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
@@ -34,10 +51,16 @@ const Login = () => {
     if (errors.password) setErrors(prev => ({ ...prev, password: '' }));
   };
 
+  // ─────────────────────────────────────────────
+  // VALIDAÇÃO DOS CAMPOS
+  // Verifica cada campo antes de enviar ao servidor
+  // Retorna true se tudo estiver correto
+  // ─────────────────────────────────────────────
   const validateFields = () => {
     const newErrors = { email: '', password: '', server: '' };
     let valid = true;
 
+    // Verifica se o e-mail foi preenchido e tem formato válido
     if (!email) {
       newErrors.email = 'O e-mail é obrigatório.';
       valid = false;
@@ -46,6 +69,7 @@ const Login = () => {
       valid = false;
     }
 
+    // Verifica se a senha foi preenchida e tem mínimo de 6 caracteres
     if (!password) {
       newErrors.password = 'A senha é obrigatória.';
       valid = false;
@@ -58,11 +82,18 @@ const Login = () => {
     return valid;
   };
 
+  // ─────────────────────────────────────────────
+  // ENVIO DO FORMULÁRIO
+  // Só envia ao servidor se passar na validação
+  // Em caso de sucesso, redireciona para o Dashboard
+  // ─────────────────────────────────────────────
   const handleLogin = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Impede o recarregamento da página
     setErrors({ email: '', password: '', server: '' });
 
-    // Salva ou remove e-mail do localStorage
+    if (!validateFields()) return; // Para aqui se houver erros
+
+    // Salva ou remove o e-mail do navegador conforme o checkbox
     if (rememberEmail) {
       localStorage.setItem('rememberedEmail', email);
     } else {
@@ -71,30 +102,40 @@ const Login = () => {
 
     setLoading(true);
     try {
+      // Envia e-mail e senha para a rota POST /api/login no backend
       const response = await axios.post(`${API_URL}/login`, { email, password });
+
+      // Salva o token e os dados do usuário no navegador
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/dashboard');
-    } catch (err) {
 
+      navigate('/dashboard'); // Redireciona para o Dashboard
+    } catch (err) {
+      // Exibe o erro retornado pelo servidor ou mensagem genérica
       if (err.response?.data?.error) {
         setErrors(prev => ({ ...prev, server: err.response.data.error }));
       } else {
         setErrors(prev => ({ ...prev, server: 'Erro de conexão com o servidor. Tente novamente.' }));
       }
     } finally {
-      setLoading(false);
+      setLoading(false); // Reativa o botão independentemente do resultado
     }
   };
 
+  // ─────────────────────────────────────────────
+  // ESTILO DA BORDA — Fica vermelha se houver
+  // erro no campo, normal se estiver correto
+  // ─────────────────────────────────────────────
   const inputBorder = (field) => ({
     border: `1px solid ${errors[field] ? '#f87171' : 'rgba(255,255,255,0.12)'}`,
   });
 
+  // ─────────────────────────────────────────────
+  // RENDERIZAÇÃO DA TELA
+  // Aqui é montado todo o visual do formulário
+  // ─────────────────────────────────────────────
   return (
     <>
-      {/* Injeta o CSS da animação */}
-
       <div style={{
         minHeight: '100vh',
         display: 'flex',
@@ -104,20 +145,19 @@ const Login = () => {
         fontFamily: "'Segoe UI', sans-serif",
         padding: '1rem',
       }}>
-   
-      <div
-  style={{
-            background: 'rgba(255,255,255,0.05)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '1.5rem',
-            padding: '2.5rem',
-            width: '100%',
-            maxWidth: '400px',
-            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
-          }}>
 
-          {/* Ícone e título */}
+        <div style={{
+          background: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '1.5rem',
+          padding: '2.5rem',
+          width: '100%',
+          maxWidth: '400px',
+          boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+        }}>
+
+          {/* ── CABEÇALHO: ícone, título e subtítulo ── */}
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <div style={{
               background: 'linear-gradient(135deg, #6c63ff, #a78bfa)',
@@ -139,7 +179,7 @@ const Login = () => {
 
           <form onSubmit={handleLogin} noValidate>
 
-            {/* Campo E-mail */}
+            {/* ── CAMPO E-MAIL: valida formato do e-mail ── */}
             <div style={{ marginBottom: '1rem' }}>
               <label style={{
                 display: 'block', fontSize: '0.8rem', fontWeight: 600,
@@ -179,7 +219,7 @@ const Login = () => {
               )}
             </div>
 
-            {/* Campo Senha */}
+            {/* ── CAMPO SENHA: com botão mostrar/ocultar ── */}
             <div style={{ marginBottom: '0.5rem' }}>
               <label style={{
                 display: 'block', fontSize: '0.8rem', fontWeight: 600,
@@ -211,6 +251,7 @@ const Login = () => {
                     ...inputBorder('password'),
                   }}
                 />
+                {/* Botão olhinho para mostrar ou ocultar a senha */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -225,7 +266,6 @@ const Login = () => {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-
               {errors.password && (
                 <p style={{ color: '#f87171', fontSize: '0.78rem', margin: '0.3rem 0 0 0.25rem' }}>
                   ⚠️ {errors.password}
@@ -233,7 +273,7 @@ const Login = () => {
               )}
             </div>
 
-            {/* Erro do servidor */}
+            {/* ── ERRO DO SERVIDOR: exibido quando o backend rejeita o login ── */}
             {errors.server && (
               <div style={{
                 background: 'rgba(248,113,113,0.1)',
@@ -252,7 +292,7 @@ const Login = () => {
               </div>
             )}
 
-            {/* Lembrar e-mail + Esqueci minha senha */}
+            {/* ── LINK ESQUECI MINHA SENHA ── */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -260,7 +300,6 @@ const Login = () => {
               marginTop: '0.75rem',
               marginBottom: '1.25rem',
             }}>
-
               <a href="#" style={{
                 fontSize: '0.8rem',
                 color: 'rgba(167,139,250,0.8)',
@@ -269,7 +308,7 @@ const Login = () => {
               }}>Esqueci minha senha</a>
             </div>
 
-            {/* Botão Entrar */}
+            {/* ── BOTÃO PRINCIPAL: desabilitado enquanto está carregando ── */}
             <button
               type="submit"
               disabled={loading}
@@ -295,7 +334,8 @@ const Login = () => {
               <LogIn size={18} />
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
-            {/* Link para cadastro */}
+
+            {/* ── LINK PARA CADASTRO: redireciona quem não tem conta ── */}
             <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', margin: '1rem 0 0 0' }}>
               Não tem conta?{' '}
               <span
@@ -305,7 +345,7 @@ const Login = () => {
                 Criar conta
               </span>
             </p>
-            
+
           </form>
         </div>
       </div>

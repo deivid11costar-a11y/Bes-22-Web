@@ -3,30 +3,48 @@ import { useNavigate } from 'react-router-dom';
 import { UserPlus, Mail, Lock, Eye, EyeOff, User, Check, X } from 'lucide-react';
 import axios from 'axios';
 
+// Endereço do servidor backend
 const API_URL = 'http://localhost:3001/api';
 
-// Requisitos de senha LGPD
+// ─────────────────────────────────────────────
+// REGRAS DE SENHA — Baseadas na LGPD
+// Cada regra tem: id, descrição e uma função
+// que testa se a senha atende aquele requisito
+// ─────────────────────────────────────────────
 const passwordRules = [
-  { id: 'length',    label: 'Mínimo 8 caracteres',         test: (p) => p.length >= 8 },
-  { id: 'upper',     label: 'Uma letra maiúscula (A-Z)',    test: (p) => /[A-Z]/.test(p) },
-  { id: 'lower',     label: 'Uma letra minúscula (a-z)',    test: (p) => /[a-z]/.test(p) },
-  { id: 'number',    label: 'Um número (0-9)',              test: (p) => /[0-9]/.test(p) },
-  { id: 'special',   label: 'Um caractere especial (!@#$)', test: (p) => /[^A-Za-z0-9]/.test(p) },
+  { id: 'length',  label: 'Mínimo 8 caracteres',         test: (p) => p.length >= 8 },
+  { id: 'upper',   label: 'Uma letra maiúscula (A-Z)',    test: (p) => /[A-Z]/.test(p) },
+  { id: 'lower',   label: 'Uma letra minúscula (a-z)',    test: (p) => /[a-z]/.test(p) },
+  { id: 'number',  label: 'Um número (0-9)',              test: (p) => /[0-9]/.test(p) },
+  { id: 'special', label: 'Um caractere especial (!@#$)', test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
 const Cadastro = () => {
+
+  // ─────────────────────────────────────────────
+  // ESTADOS — Guardam os dados digitados pelo
+  // usuário e controlam o comportamento da tela
+  // ─────────────────────────────────────────────
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [errors, setErrors] = useState({ nome: '', email: '', password: '', confirmPassword: '', server: '' });
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [sucesso, setSucesso] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const navigate = useNavigate();
 
+  // Armazena as mensagens de erro de cada campo
+  const [errors, setErrors] = useState({ nome: '', email: '', password: '', confirmPassword: '', server: '' });
+
+  const [loading, setLoading] = useState(false);         // Controla o botão "Cadastrando..."
+  const [showPassword, setShowPassword] = useState(false); // Mostrar/ocultar senha
+  const [showConfirm, setShowConfirm] = useState(false);   // Mostrar/ocultar confirmação
+  const [sucesso, setSucesso] = useState(false);           // Exibe mensagem de sucesso
+  const [passwordFocused, setPasswordFocused] = useState(false); // Mostra os requisitos da senha
+
+  const navigate = useNavigate(); // Usado para redirecionar entre páginas
+
+  // ─────────────────────────────────────────────
+  // LIMPA O ERRO do campo assim que o usuário
+  // começa a digitar novamente nele
+  // ─────────────────────────────────────────────
   const handleChange = (field, value) => {
     if (field === 'nome') setNome(value);
     if (field === 'email') setEmail(value);
@@ -35,11 +53,16 @@ const Cadastro = () => {
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
+  // ─────────────────────────────────────────────
+  // VALIDAÇÃO DOS CAMPOS
+  // Verifica cada campo antes de enviar ao servidor
+  // Retorna true se tudo estiver correto
+  // ─────────────────────────────────────────────
   const validateFields = () => {
     const newErrors = { nome: '', email: '', password: '', confirmPassword: '', server: '' };
     let valid = true;
 
-    // Regra 1 — Nome só letras e espaços
+    // Regra 1 — Nome: apenas letras e espaços (sem números ou símbolos)
     if (!nome) {
       newErrors.nome = 'O nome é obrigatório.';
       valid = false;
@@ -51,7 +74,7 @@ const Cadastro = () => {
       valid = false;
     }
 
-    // Regra 2 — E-mail com domínios válidos
+    // Regra 2 — E-mail: formato válido + domínio aceito
     const dominiosValidos = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com', 'bol.com.br', 'uol.com.br'];
     if (!email) {
       newErrors.email = 'O e-mail é obrigatório.';
@@ -67,7 +90,7 @@ const Cadastro = () => {
       }
     }
 
-    // Regra 3 — Senha LGPD
+    // Regra 3 — Senha: deve atender todos os requisitos da LGPD
     const allRulesPassed = passwordRules.every(rule => rule.test(password));
     if (!password) {
       newErrors.password = 'A senha é obrigatória.';
@@ -77,6 +100,7 @@ const Cadastro = () => {
       valid = false;
     }
 
+    // Regra 4 — Confirmação: as duas senhas devem ser iguais
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Confirme sua senha.';
       valid = false;
@@ -89,27 +113,41 @@ const Cadastro = () => {
     return valid;
   };
 
+  // ─────────────────────────────────────────────
+  // ENVIO DO FORMULÁRIO
+  // Só envia ao servidor se passar na validação
+  // Em caso de sucesso, redireciona para o login
+  // ─────────────────────────────────────────────
   const handleCadastro = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Impede o recarregamento da página
     setErrors({ nome: '', email: '', password: '', confirmPassword: '', server: '' });
-    if (!validateFields()) return;
+
+    if (!validateFields()) return; // Para aqui se houver erros
 
     setLoading(true);
     try {
+      // Envia os dados para a rota POST /api/register no backend
       await axios.post(`${API_URL}/register`, { name: nome, email, password });
-      setSucesso(true);
-      setTimeout(() => navigate('/'), 2000);
+
+      setSucesso(true); // Mostra mensagem de sucesso
+      setTimeout(() => navigate('/'), 2000); // Redireciona após 2 segundos
     } catch (err) {
+      // Exibe o erro retornado pelo servidor ou mensagem genérica
       if (err.response?.data?.error) {
         setErrors(prev => ({ ...prev, server: err.response.data.error }));
       } else {
         setErrors(prev => ({ ...prev, server: 'Erro de conexão com o servidor. Tente novamente.' }));
       }
     } finally {
-      setLoading(false);
+      setLoading(false); // Reativa o botão independentemente do resultado
     }
   };
 
+  // ─────────────────────────────────────────────
+  // ESTILOS REUTILIZÁVEIS
+  // Funções que retornam estilos inline para
+  // manter o código mais organizado e limpo
+  // ─────────────────────────────────────────────
   const inputBorder = (field) => ({
     border: `1px solid ${errors[field] ? '#f87171' : 'rgba(255,255,255,0.12)'}`,
   });
@@ -133,6 +171,10 @@ const Cadastro = () => {
     ...inputBorder(field),
   });
 
+  // ─────────────────────────────────────────────
+  // RENDERIZAÇÃO DA TELA
+  // Aqui é montado todo o visual do formulário
+  // ─────────────────────────────────────────────
   return (
     <div style={{
       minHeight: '100vh',
@@ -154,7 +196,7 @@ const Cadastro = () => {
         boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
       }}>
 
-        {/* Ícone e título */}
+        {/* ── CABEÇALHO: ícone, título e subtítulo ── */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div style={{
             background: 'linear-gradient(135deg, #6c63ff, #a78bfa)',
@@ -174,7 +216,7 @@ const Cadastro = () => {
           </p>
         </div>
 
-        {/* Sucesso */}
+        {/* ── MENSAGEM DE SUCESSO: aparece após cadastro realizado ── */}
         {sucesso && (
           <div style={{
             background: 'rgba(52,211,153,0.1)',
@@ -192,7 +234,7 @@ const Cadastro = () => {
 
         <form onSubmit={handleCadastro} noValidate>
 
-          {/* Campo Nome */}
+          {/* ── CAMPO NOME: aceita apenas letras e espaços ── */}
           <div style={{ marginBottom: '1rem' }}>
             <label style={labelStyle}>Nome</label>
             <div style={{ position: 'relative' }}>
@@ -211,7 +253,7 @@ const Cadastro = () => {
             {errors.nome && <p style={{ color: '#f87171', fontSize: '0.78rem', margin: '0.3rem 0 0 0.25rem' }}>⚠️ {errors.nome}</p>}
           </div>
 
-          {/* Campo E-mail */}
+          {/* ── CAMPO E-MAIL: valida formato e domínio ── */}
           <div style={{ marginBottom: '1rem' }}>
             <label style={labelStyle}>E-mail</label>
             <div style={{ position: 'relative' }}>
@@ -231,7 +273,7 @@ const Cadastro = () => {
             {errors.email && <p style={{ color: '#f87171', fontSize: '0.78rem', margin: '0.3rem 0 0 0.25rem' }}>⚠️ {errors.email}</p>}
           </div>
 
-          {/* Campo Senha */}
+          {/* ── CAMPO SENHA: com botão mostrar/ocultar ── */}
           <div style={{ marginBottom: '1rem' }}>
             <label style={labelStyle}>Senha</label>
             <div style={{ position: 'relative' }}>
@@ -259,7 +301,8 @@ const Cadastro = () => {
               </button>
             </div>
 
-            {/* Requisitos da senha — aparece ao focar */}
+            {/* ── CHECKLIST DA SENHA: aparece ao clicar no campo,
+                cada item fica verde e riscado quando atendido ── */}
             {(passwordFocused || password) && (
               <div style={{
                 marginTop: '0.5rem',
@@ -274,14 +317,8 @@ const Cadastro = () => {
                 {passwordRules.map(rule => {
                   const passed = rule.test(password);
                   return (
-                    <div key={rule.id} style={{
-                      display: 'flex', alignItems: 'center', gap: '0.4rem',
-                      marginBottom: '0.2rem',
-                    }}>
-                      {passed
-                        ? <Check size={13} color="#34d399" />
-                        : <X size={13} color="#f87171" />
-                      }
+                    <div key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
+                      {passed ? <Check size={13} color="#34d399" /> : <X size={13} color="#f87171" />}
                       <span style={{
                         fontSize: '0.78rem',
                         color: passed ? '#34d399' : 'rgba(255,255,255,0.4)',
@@ -295,11 +332,10 @@ const Cadastro = () => {
                 })}
               </div>
             )}
-
             {errors.password && <p style={{ color: '#f87171', fontSize: '0.78rem', margin: '0.3rem 0 0 0.25rem' }}>⚠️ {errors.password}</p>}
           </div>
 
-          {/* Campo Confirmar Senha */}
+          {/* ── CAMPO CONFIRMAR SENHA: verifica se as senhas coincidem ── */}
           <div style={{ marginBottom: '1rem' }}>
             <label style={labelStyle}>Confirmar Senha</label>
             <div style={{ position: 'relative' }}>
@@ -328,7 +364,7 @@ const Cadastro = () => {
             {errors.confirmPassword && <p style={{ color: '#f87171', fontSize: '0.78rem', margin: '0.3rem 0 0 0.25rem' }}>⚠️ {errors.confirmPassword}</p>}
           </div>
 
-          {/* Erro do servidor */}
+          {/* ── ERRO DO SERVIDOR: exibido quando o backend retorna erro ── */}
           {errors.server && (
             <div style={{
               background: 'rgba(248,113,113,0.1)',
@@ -344,7 +380,7 @@ const Cadastro = () => {
             </div>
           )}
 
-          {/* Botão Cadastrar */}
+          {/* ── BOTÃO PRINCIPAL: desabilitado enquanto está carregando ── */}
           <button
             type="submit"
             disabled={loading}
@@ -370,7 +406,7 @@ const Cadastro = () => {
             {loading ? 'Cadastrando...' : 'Criar Conta'}
           </button>
 
-          {/* Link para login */}
+          {/* ── LINK PARA LOGIN: redireciona quem já tem conta ── */}
           <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
             Já tem conta?{' '}
             <span
