@@ -1,0 +1,2 @@
+start cmd /k "cd /d C:\Users\deivi\Downloads\Bes-22-Web-main\Bes-22-Web-main\backend && npm run dev"
+start cmd /k "cd /d C:\Users\deivi\Downloads\Bes-22-Web-main\Bes-22-Web-main\frontend && npm run dev"
